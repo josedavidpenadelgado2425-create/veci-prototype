@@ -1,6 +1,9 @@
 const supabase = require('../services/supabase');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy_client_id');
 
 const esUsuarioUTP = (email) => {
     return email.toLowerCase().endsWith('@utp.edu.co');
@@ -175,8 +178,102 @@ const login = async (req, res) => {
     }
 };
 
+const googleLogin = async (req, res) => {
+    try {
+        const { id_token } = req.body;
+        if (!id_token) {
+            return res.status(400).json({ error: 'id_token es obligatorio.' });
+        }
+
+        const ticket = await client.verifyIdToken({
+            idToken: id_token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const { email, name, picture } = payload;
+
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        let finalUser = user;
+
+        if (error || !user) {
+            // Usuario no existe, registrar automáticamente
+            const isUTP = esUsuarioUTP(email);
+            const userType = isUTP ? 'utp_student' : 'external';
+            const userRank = isUTP ? 'confiable' : 'nuevo';
+            const rankPoints = isUTP ? 100 : 0;
+            
+            const salt = await bcrypt.genSalt(10);
+            const randomPassword = Math.random().toString(36).slice(-10);
+            const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+            const { data: newUser, error: insertError } = await supabase
+                .from('users')
+                .insert([{
+                    email,
+                    password_hash: passwordHash,
+                    full_name: name,
+                    user_type: userType,
+                    rank: userRank,
+                    rank_points: rankPoints,
+                    is_verified: true
+                }])
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+            finalUser = newUser;
+
+            if (isUTP) {
+                const { error: tutorError } = await supabase
+                    .from('tutor_profiles')
+                    .insert([{
+                        user_id: newUser.id,
+                        subjects: [],
+                        price_hour: 10000
+                    }]);
+                if (tutorError) console.error("Error creando perfil de tutor:", tutorError);
+            }
+        } else {
+            if (!user.is_verified) {
+                await supabase
+                    .from('users')
+                    .update({ is_verified: true, temp_otp: null })
+                    .eq('id', user.id);
+            }
+        }
+
+        const token = jwt.sign(
+            { id: finalUser.id, email: finalUser.email, user_type: finalUser.user_type, rank: finalUser.rank },
+            process.env.JWT_SECRET || 'veci_super_secret_dev_key',
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            message: 'Inicio de sesión con Google exitoso.',
+            token,
+            user: {
+                id: finalUser.id,
+                email: finalUser.email,
+                full_name: finalUser.full_name,
+                userType: finalUser.user_type,
+                rank: finalUser.rank
+            }
+        });
+
+    } catch (error) {
+        console.error('Error en googleLogin:', error);
+        res.status(401).json({ error: 'Token de Google inválido o expirado.' });
+    }
+};
+
 module.exports = {
     register,
     verifyOtp,
-    login
+    login,
+    googleLogin
 };
