@@ -4,18 +4,15 @@ const authenticate = require('../middleware/authenticate');
 const requireUTP = require('../middleware/requireUTP');
 const campusController = require('../controllers/campusController');
 
-// Todas las rutas requieren authenticate + requireUTP
-router.use(authenticate, requireUTP);
+// Rutas de lectura — solo requieren autenticación (cualquier usuario puede ver tutores)
+router.get('/tutors', authenticate, campusController.getTutors);
+router.get('/tutors/:id', authenticate, campusController.getTutorDetail);
 
-// Tutores
-router.get('/tutors', campusController.getTutors);
-router.get('/tutors/:id', campusController.getTutorDetail);
-router.post('/tutors/profile', campusController.createTutorProfile);
-
-// Sesiones
-router.post('/sessions/book', campusController.bookSession);
-router.post('/sessions/:id/confirm-payment', campusController.confirmPayment);
-router.post('/sessions/:id/complete', campusController.completeSession);
-router.post('/sessions/:id/review', campusController.reviewSession);
+// Rutas de acción — requieren autenticación + ser estudiante UTP
+router.post('/tutors/profile', authenticate, requireUTP, campusController.createTutorProfile);
+router.post('/sessions/book', authenticate, requireUTP, campusController.bookSession);
+router.post('/sessions/:id/confirm-payment', authenticate, requireUTP, campusController.confirmPayment);
+router.post('/sessions/:id/complete', authenticate, requireUTP, campusController.completeSession);
+router.post('/sessions/:id/review', authenticate, requireUTP, campusController.reviewSession);
 
 module.exports = router;
