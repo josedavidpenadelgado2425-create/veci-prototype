@@ -39,6 +39,11 @@ const getTutors = async (req, res) => {
         const { data: tutors, error } = await query
             .order('avg_rating', { ascending: false });
 
+        console.log('[getTutors] raw query result:', JSON.stringify({ error, count: tutors?.length }));
+        if (tutors?.length > 0) {
+            console.log('[getTutors] first tutor sample:', JSON.stringify(tutors[0]));
+        }
+
         if (error) throw error;
 
         const formatted = (tutors || []).map(t => ({
@@ -58,6 +63,7 @@ const getTutors = async (req, res) => {
             trustScore: parseFloat(t.users?.trust_score) || 5.0,
         }));
 
+        console.log('[getTutors] formatted count:', formatted.length);
         res.json({ tutors: formatted });
     } catch (error) {
         console.error('Error en getTutors:', error);
