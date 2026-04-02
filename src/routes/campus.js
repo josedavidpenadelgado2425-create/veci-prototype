@@ -7,6 +7,7 @@ const campusController = require('../controllers/campusController');
 // Rutas de lectura — solo requieren autenticación (cualquier usuario puede ver tutores)
 router.get('/tutors', authenticate, campusController.getTutors);
 router.get('/tutors/:id', authenticate, campusController.getTutorDetail);
+router.get('/tutors/:id/reviews', authenticate, campusController.getTutorReviews);
 
 // Rutas de acción — requieren autenticación + ser estudiante UTP
 router.post('/tutors/profile', authenticate, requireUTP, campusController.createTutorProfile);

@@ -519,6 +519,55 @@ const reviewSession = async (req, res) => {
     }
 };
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GET /api/campus/tutors/:id/reviews
+// Obtener reseñas de un tutor
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const getTutorReviews = async (req, res) => {
+    try {
+        const { id } = req.params; // tutor_profile id
+
+        // Obtener user_id del tutor
+        const { data: tutor, error: tutorError } = await supabase
+            .from('tutor_profiles')
+            .select('user_id')
+            .eq('id', id)
+            .single();
+
+        if (tutorError || !tutor) {
+            return res.status(404).json({ error: 'Tutor no encontrado.' });
+        }
+
+        // Obtener reviews del tutor con nombre del reviewer
+        const { data: reviews, error: reviewsError } = await supabase
+            .from('reviews')
+            .select(`
+                id, rating, comment, created_at,
+                users!reviewer_id ( full_name, avatar_url )
+            `)
+            .eq('reviewed_id', tutor.user_id)
+            .eq('service_type', 'tutoria')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (reviewsError) throw reviewsError;
+
+        const formatted = (reviews || []).map(r => ({
+            id: r.id,
+            rating: r.rating,
+            comment: r.comment,
+            createdAt: r.created_at,
+            reviewerName: r.users?.full_name || 'Anónimo',
+            reviewerAvatar: r.users?.avatar_url,
+        }));
+
+        res.json({ reviews: formatted });
+    } catch (error) {
+        console.error('Error en getTutorReviews:', error);
+        res.status(500).json({ error: error.message || 'Error obteniendo reseñas.' });
+    }
+};
+
 module.exports = {
     getTutors,
     getTutorDetail,
@@ -527,4 +576,5 @@ module.exports = {
     confirmPayment,
     completeSession,
     reviewSession,
+    getTutorReviews,
 };
