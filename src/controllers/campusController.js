@@ -247,7 +247,7 @@ const bookSession = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en bookSession:', error);
-        res.status(500).json({ error: 'Error reservando sesión de tutoría.' });
+        res.status(500).json({ error: error.message || error.details || 'Error reservando sesión de tutoría.' });
     }
 };
 
