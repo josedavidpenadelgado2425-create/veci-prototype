@@ -407,6 +407,8 @@ const reviewSession = async (req, res) => {
         const reviewerId = req.user.id;
         const { rating, comment } = req.body;
 
+        console.log('[reviewSession] sessionId:', id, 'reviewerId:', reviewerId, 'rating:', rating);
+
         if (!rating || rating < 1 || rating > 5) {
             return res.status(400).json({ error: 'rating debe estar entre 1 y 5.' });
         }
@@ -513,7 +515,7 @@ const reviewSession = async (req, res) => {
         });
     } catch (error) {
         console.error('Error en reviewSession:', error);
-        res.status(500).json({ error: 'Error creando reseña.' });
+        res.status(500).json({ error: error.message || error.details || 'Error creando reseña.' });
     }
 };
 
