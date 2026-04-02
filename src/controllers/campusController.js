@@ -186,6 +186,9 @@ const bookSession = async (req, res) => {
         const studentId = req.user.id;
         const { tutorId, subject, scheduledAt, durationHours, modality, notes } = req.body;
 
+        console.log('[bookSession] body:', JSON.stringify(req.body));
+        console.log('[bookSession] studentId:', studentId);
+
         if (!tutorId || !subject || !scheduledAt) {
             return res.status(400).json({ error: 'tutorId, subject y scheduledAt son obligatorios.' });
         }
